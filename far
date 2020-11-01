@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+usage="far find [replace]"
+
+if [ $# -eq 0 ]; then
+	echo "$usage"
+elif [ $# -eq 1 ]; then
+	rg "$1"
+elif [ $# -eq 2 ]; then
+	rg -l "$1" | xargs sd "$1" "$2"
+fi

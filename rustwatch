@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+fd --type file ".rs$" | entr -c cargo test

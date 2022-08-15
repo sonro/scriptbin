@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+set -e
+
+CWD=$(pwd)
+CARGO_TOML="$CWD/Cargo.toml"
+WASM_DIR="$CWD/wasm"
+HTML_TEMPLATE_FILE="$HOME/xDev/bin/var/makewasm-template.html"
+
+# only continue if in a cargo directory
+if [[ ! -f "$CARGO_TOML" ]]; then
+	echo $'Not a cargo directory\nExiting...'
+	exit
+fi
+
+
+# get `name` value from toml 
+# remove whitespace 
+# remove quotes
+NAME=`awk -F= '/name/ {print $2}' Cargo.toml | sed -e 's/ //g' -e 's/"//g'`
+
+# create serving directory
+mkdir -p "$WASM_DIR"
+
+# compile for wasm
+cargo build --release --target wasm32-unknown-unknown
+
+# bind wasm to js
+wasm-bindgen "target/wasm32-unknown-unknown/release/$NAME.wasm" \
+	--out-dir "$WASM_DIR" \
+	--no-modules \
+	--no-typescript
+
+# default bound file names
+ORIGINAL_JS_FILE="$WASM_DIR/$NAME.js"
+ORIGINAL_WASM_FILE="$WASM_DIR/${NAME}_bg.wasm"
+HTML_FILE="$WASM_DIR/index.html"
+
+# only continue if js and wasm files created
+if [[ ! -f "$ORIGINAL_JS_FILE" || ! -f "$ORIGINAL_WASM_FILE" ]]; then
+	echo $'JavaScript + wasm files were not created\nExiting...'
+	exit
+fi
+
+# create index.html file
+sed -e "s/blobbindings/$NAME/" "$HTML_TEMPLATE_FILE" > "$HTML_FILE"
+
+# serve wasm
+http-server "$WASM_DIR"

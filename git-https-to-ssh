@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+set -e
+
+HELP="\
+GIT HTTPS TO SSH
+=============
+sonro <sonro@gmx.com>
+
+Change current git repository's origin URL schema from https to ssh
+
+USAGE: git-https-to-ssh [OPTIONS]
+
+OPTIONS:
+	-h, --help       Prints help information
+"
+
+main() {
+	parse_args "$@"
+
+	local https=$(git remote get-url origin)
+    if [[ "$https" == "git@"* ]]; then
+        echo "Already an ssh remote: $https"
+        return 1;
+    fi
+
+    local user=$(dirname $https | xargs basename)
+	local repo=$(basename $https)
+
+    local ssh="git@github.com:$user/$repo"
+    git remote set-url origin "$ssh"
+
+	return 0
+}
+
+parse_args() {
+	for opt in "$@"; do
+		case "$opt" in
+			-h|--help)
+				echo "$HELP"
+				exit 0
+				;;
+		esac
+	done
+
+	return 0
+}
+
+main "$@"

@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+set -e
+
+HELP="\
+CRAME
+=============
+sonro <sonro@gmx.com>
+
+Modern minimal C development framework with unit testing and a justfile
+
+USAGE: crame <project-name>
+
+OPTIONS:
+	-h, --help       Prints help information
+"
+
+
+SCRIPT_DIR=$(cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+TEMPLATE_DIR="$SCRIPT_DIR/var/crame-template"
+
+
+main() {
+	parse_args "$@"
+
+    local name="$1"
+    local project_dir="$(pwd)/$name"
+
+    cp -r "$TEMPLATE_DIR" "$project_dir"
+    
+    echo "Created new crame project '$name' at: $project_dir"
+
+	return 0
+}
+
+parse_args() {
+	for opt in "$@"; do
+		case "$opt" in
+			-h|--help)
+				echo "$HELP"
+				exit 0
+				;;
+		esac
+	done
+
+    
+    if [ $# -eq 0 ]; then
+        echo "$HELP"
+        exit 1
+    fi
+
+	return 0
+}
+
+main "$@"

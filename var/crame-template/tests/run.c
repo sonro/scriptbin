@@ -1,6 +1,6 @@
 #include <stdio.h>
 #define HEADERS
-#include "./test_list.c"
+#include "./test_all.c"
 #undef HEADERS
 
 #define TEST(name) test = name;
@@ -24,7 +24,7 @@ int main()
     int line = 0;
 
 #define TESTS
-#include "./test_list.c"
+#include "./test_all.c"
 #undef TESTS
 
     putchar('\n');

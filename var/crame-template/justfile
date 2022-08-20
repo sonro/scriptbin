@@ -3,6 +3,7 @@ set dotenv-load
 exeName := `default=$(basename $PWD); echo ${EXE_NAME:-$default}`
 srcFiles := `fd -e c -p 'src|lib' --exec-batch echo`
 testFiles := `fd -e c --exclude 'src/main.c' -p 'src|lib|tests' --exec-batch echo`
+buildOptions := "-g"
 
 run: build
     @echo "$(tput setaf 2)Running $(tput setaf 7){{exeName}}$(tput sgr0):\n"
@@ -12,15 +13,19 @@ test: _build-test
     @echo "$(tput setaf 2)Testing$(tput sgr0):"
     @-./target/test 
 
+watch:
+    @watchexec -cr -e c,h just test
+
+watch-run:
+    @watchexec -cr -e c,h just run
+
 build:
     @echo "$(tput setaf 2)Building $(tput setaf 7){{exeName}}$(tput sgr0):\n"
-    @mkdir -p ./target
-    cc {{srcFiles}} -o ./target/{{exeName}}
+    cc {{srcFiles}} -o ./target/{{exeName}} {{buildOptions}} 
     @echo
 
 _build-test:
-    @mkdir -p ./target
-    @cc {{testFiles}} -o ./target/test
+    @cc {{testFiles}} -o ./target/test -g
 
 clean:
     @echo "Cleaning target/"

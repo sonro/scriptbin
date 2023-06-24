@@ -1,9 +1,2 @@
 #!/usr/bin/env bash
-sudo apt update &&
-	sudo apt upgrade -y &&
-	sudo apt autoremove -y &&
-	rustup update &&
-	cargo install-update -a &&
-	sudo composer selfupdate &&
-	composer global update
-
+eval "$HOME/.dotfiles/bin/update"

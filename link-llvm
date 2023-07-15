@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -e
+
+version="16"
+
+install_dir="/usr/lib/llvm-$version/bin"
+link_dir="/usr/bin"
+
+binaries=( $(ls "$install_dir") )
+
+for bin in "${binaries[@]}"; do
+	install="$install_dir/$bin"
+	link="$link_dir/$bin"
+
+	if [ -f "$install" ]; then
+		rm -f "$link"
+		ln -s "$install" "$link"
+		printf "linking %-30s %-50s -> %s\n" $bin $link $install
+	else
+		echo "ERROR: no $bin-$version in $install_dir"
+	fi
+done

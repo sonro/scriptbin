@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+#
+# link-submodule.sh — replace a submodule with a symbolic link (and back)
+#
+# Usage:
+#   link-submodule.sh link <submodule-path> <local-path>
+#   link-submodule.sh restore <submodule-path>
+#
+# Example:
+#   ./link-submodule.sh link deps/songam-core ~/Projects/songam-core
+#   ./link-submodule.sh restore deps/songam-core
+#
+
+set -e
+
+ACTION=$1
+SUBMODULE_PATH=$2
+LOCAL_PATH=$3
+
+if [[ -z "$ACTION" || -z "$SUBMODULE_PATH" ]]; then
+  echo "Usage:"
+  echo "  $0 link <submodule-path> <local-path>"
+  echo "  $0 restore <submodule-path>"
+  exit 1
+fi
+
+case "$ACTION" in
+  link)
+    if [[ -z "$LOCAL_PATH" ]]; then
+      echo "Error: local path required for 'link' action."
+      exit 1
+    fi
+
+    # Make sure we’re in the repo root
+    REPO_ROOT=$(git rev-parse --show-toplevel)
+    cd "$REPO_ROOT"
+
+    # Deinit and remove submodule working tree (but keep metadata)
+    echo "Deinitializing submodule $SUBMODULE_PATH..."
+    git submodule deinit -f "$SUBMODULE_PATH" >/dev/null 2>&1 || true
+    rm -rf "$SUBMODULE_PATH"
+
+    # Create symbolic link
+    echo "Creating symlink: $SUBMODULE_PATH -> $LOCAL_PATH"
+    ln -s "$LOCAL_PATH" "$SUBMODULE_PATH"
+
+    # Ignore changes to this submodule entry
+    git update-index --assume-unchanged "$SUBMODULE_PATH"
+    echo "Linked and marked '$SUBMODULE_PATH' as assume-unchanged."
+    ;;
+
+  restore)
+    # Make sure we’re in the repo root
+    REPO_ROOT=$(git rev-parse --show-toplevel)
+    cd "$REPO_ROOT"
+
+    # Remove symlink
+    if [[ -L "$SUBMODULE_PATH" ]]; then
+      echo "Removing symlink: $SUBMODULE_PATH"
+      rm "$SUBMODULE_PATH"
+    else
+      echo "Warning: $SUBMODULE_PATH is not a symlink; skipping removal."
+    fi
+
+    # Stop ignoring it
+    git update-index --no-assume-unchanged "$SUBMODULE_PATH"
+
+    # Restore submodule
+    echo "Restoring submodule $SUBMODULE_PATH..."
+    git submodule update --init "$SUBMODULE_PATH"
+
+    echo "Restored $SUBMODULE_PATH to normal submodule state."
+    ;;
+
+  *)
+    echo "Unknown action: $ACTION"
+    echo "Use 'link' or 'restore'."
+    exit 1
+    ;;
+esac
+

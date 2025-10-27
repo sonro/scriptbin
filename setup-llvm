@@ -1,0 +1,114 @@
+#!/usr/bin/env bash
+# setup-llvm.sh — Install and configure LLVM/Clang toolchain on Ubuntu.
+# Usage: sudo bash setup-llvm.sh <version>
+set -euo pipefail
+
+if [[ $# -ne 1 ]]; then
+    echo "Usage: sudo bash setup-llvm.sh <version>"
+    exit 1
+fi
+
+LLVM_VERSION="$1"
+PRIORITY=$((100 + LLVM_VERSION))
+LLVM_APT_SCRIPT="https://apt.llvm.org/llvm.sh"
+
+echo "=== LLVM/Clang Setup Utility ==="
+echo "Target LLVM version: $LLVM_VERSION"
+echo
+
+# ------------------------------------------------------------
+# 1. Add official LLVM repository if not present
+# ------------------------------------------------------------
+if ! apt-cache policy | grep -q "apt.llvm.org"; then
+    echo ">>> Adding LLVM APT repository..."
+    wget -O - "$LLVM_APT_SCRIPT" | bash
+else
+    echo ">>> LLVM APT repository already present."
+fi
+
+# ------------------------------------------------------------
+# 2. Install LLVM, Clang, and core developer tools
+# ------------------------------------------------------------
+echo
+echo ">>> Installing LLVM/Clang $LLVM_VERSION..."
+apt install -y \
+    clang-$LLVM_VERSION \
+    clangd-$LLVM_VERSION \
+    clang-format-$LLVM_VERSION \
+    clang-tidy-$LLVM_VERSION \
+    lld-$LLVM_VERSION \
+    lldb-$LLVM_VERSION \
+    libc++-$LLVM_VERSION-dev \
+    libc++abi-$LLVM_VERSION-dev \
+    llvm-$LLVM_VERSION \
+    llvm-$LLVM_VERSION-dev \
+    llvm-$LLVM_VERSION-tools
+
+# ------------------------------------------------------------
+# 3. Register core tools with update-alternatives
+# ------------------------------------------------------------
+echo
+echo ">>> Registering LLVM/Clang $LLVM_VERSION with update-alternatives..."
+
+register_alt() {
+    local name="$1"
+    local path="/usr/bin/$1-$LLVM_VERSION"
+    if [[ -f "$path" ]]; then
+        echo "Setting $name → $path"
+        update-alternatives --install "/usr/bin/$name" "$name" "$path" "$PRIORITY" >/dev/null
+    else
+        echo "Skipping $name (not found at $path)"
+    fi
+}
+
+TOOLS=(
+    clang clang++ clangd clang-format clang-tidy
+    lld lldb
+    llvm-ar llvm-ranlib llvm-nm llvm-objdump llvm-objcopy llvm-strip
+    llvm-symbolizer llvm-config opt llc
+)
+
+for tool in "${TOOLS[@]}"; do
+    register_alt "$tool"
+done
+
+# ------------------------------------------------------------
+# 4. Special handling for lldb-dap (different install path)
+# ------------------------------------------------------------
+LLDB_DAP_PATHS=(
+    "/usr/bin/lldb-dap-$LLVM_VERSION"
+    "/usr/lib/llvm-$LLVM_VERSION/bin/lldb-dap"
+)
+
+for path in "${LLDB_DAP_PATHS[@]}"; do
+    if [[ -f "$path" ]]; then
+        echo "Setting lldb-dap → $path"
+        update-alternatives --install "/usr/bin/lldb-dap" "lldb-dap" "$path" "$PRIORITY" >/dev/null
+        break
+    fi
+done
+
+# ------------------------------------------------------------
+# 5. Verification
+# ------------------------------------------------------------
+echo
+echo ">>> Verifying toolchain..."
+for cmd in clang lldb clangd; do
+    if command -v "$cmd" >/dev/null; then
+        printf "  %-10s -> " "$cmd"
+        "$cmd" --version | head -n1
+    else
+        echo "  $cmd not found!"
+    fi
+done
+if command -v lldb-dap >/dev/null; then
+    echo "  lldb-dap    -> $(readlink -f $(which lldb-dap))"
+else
+    echo "  lldb-dap    -> not found!"
+fi
+
+
+echo
+echo "✅ LLVM/Clang $LLVM_VERSION installation and configuration complete!"
+echo "You can switch versions later using: sudo update-alternatives --config clang"
+
